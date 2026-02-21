@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(VIEWER)
+  createdAt    DateTime  @default(now())
+  sessions     Session[]
+  invitesMade  Invite[]  @relation("InvitesMade")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Invite {
+  id        String   @id @default(uuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  createdBy String
+  creator   User     @relation("InvitesMade", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([email])
+}
+
+model Photo {
+  id          String      @id @default(uuid())
+  title       String
+  description String?
+  slug        String      @unique
+  visibility  Visibility  @default(PRIVATE)
+  createdAt   DateTime    @default(now())
+  width       Int
+  height      Int
+  storageKey  String
+  sizesJson   Json
+  tags        PhotoTag[]
+  albums      AlbumPhoto[]
+}
+
+model Tag {
+  id     String     @id @default(uuid())
+  name   String     @unique
+  photos PhotoTag[]
+}
+
+model PhotoTag {
+  photoId String
+  tagId   String
+  photo   Photo @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  tag     Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([photoId, tagId])
+  @@index([tagId])
+}
+
+model Album {
+  id          String      @id @default(uuid())
+  title       String
+  description String?
+  createdAt   DateTime    @default(now())
+  photos      AlbumPhoto[]
+}
+
+model AlbumPhoto {
+  albumId  String
+  photoId  String
+  position Int?
+  album    Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  photo    Photo @relation(fields: [photoId], references: [id], onDelete: Cascade)
+
+  @@id([albumId, photoId])
+  @@index([albumId])
+}
+
+model ShareLink {
+  id           String            @id @default(uuid())
+  token        String            @unique
+  resourceType ShareResourceType
+  resourceId   String
+  expiresAt    DateTime
+  createdAt    DateTime          @default(now())
+
+  @@index([resourceType, resourceId])
+}
+
+enum Role {
+  ADMIN
+  VIEWER
+}
+
+enum Visibility {
+  PRIVATE
+  SHARED
+}
+
+enum ShareResourceType {
+  PHOTO
+  ALBUM
+}
